@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Daily Quotes</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    body { margin:0; min-height:100dvh; display:grid; place-items:center; background:#0b0f15; color:#e8edf2; }
+    .card { max-width:720px; width:clamp(320px,90vw,720px); padding:28px; border-radius:18px; background:#131a22; box-shadow:0 10px 30px rgba(0,0,0,.35); }
+    .quote { font-size:1.5rem; line-height:1.45; margin:0 0 14px; }
+    .author { opacity:.8; margin:0 0 8px; }
+    .source { opacity:.6; font-style:italic; }
+    .row { display:flex; gap:10px; margin-top:18px; }
+    button { cursor:pointer; border:0; padding:10px 14px; border-radius:12px; }
+    .primary { background:#3a7bfd; color:#fff; }
+    .ghost { background:transparent; border:1px solid #334155; color:#e8edf2; }
+    footer { margin-top:14px; opacity:.45; font-size:.9rem; text-align:center; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <p class="quote" id="quote">…</p>
+    <p class="author" id="author"></p>
+    <p class="source" id="source"></p>
+
+    <div class="row">
+      <button class="ghost" id="prevBtn">Zurück</button>
+      <button class="primary" id="nextBtn">Nächste</button>
+      <button class="ghost" id="shareBtn">Teilen</button>
+    </div>
+
+    <footer id="footer"></footer>
+  </main>
+
+  <script>
+    const state = { quotes: [], idx: 0 };
+
+    function dailyIndex(len) {
+      const d = new Date();
+      const days = Math.floor(d.getTime() / 86400000);
+      return (days % len + len) % len;
+    }
+
+    async function loadQuotes() {
+      const res = await fetch('quotes.json', { cache: 'no-store' });
+      const data = await res.json();
+      state.quotes = data;
+      state.idx = dailyIndex(state.quotes.length);
+      render();
+    }
+
+    function render() {
+      if (!state.quotes.length) return;
+      const q = state.quotes[state.idx];
+      document.getElementById('quote').textContent = `„${q.text}“`;
+      document.getElementById('author').textContent = q.author ? `— ${q.author}` : '';
+      document.getElementById('source').textContent = q.source ? `Quelle: ${q.source}` : '';
+      document.getElementById('footer').textContent = `${state.idx+1}/${state.quotes.length}`;
+    }
+
+    function next(n=1){ state.idx = (state.idx + n + state.quotes.length) % state.quotes.length; render(); }
+
+    document.getElementById('nextBtn').onclick = () => next(1);
+    document.getElementById('prevBtn').onclick = () => next(-1);
+    document.getElementById('shareBtn').onclick = async () => {
+      const q = state.quotes[state.idx];
+      const text = `„${q.text}“ — ${q.author || 'Unbekannt'}${q.source ? `\nQuelle: ${q.source}`:''}`;
+      if (navigator.share) {
+        try { await navigator.share({ text }); } catch {}
+      } else {
+        navigator.clipboard.writeText(text);
+        alert('In Zwischenablage kopiert!');
+      }
+    };
+
+    loadQuotes();
+  </script>
+</body>
+</html>
