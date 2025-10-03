@@ -6,9 +6,9 @@
   <title>Daily Quotes</title>
   <style>
     :root{
-      --bg: #0b0f15;          /* Hintergrund */
-      --fg: #e8edf2;          /* Schrift */
-      --card: #131a22;        /* Box */
+      --bg: #0b0f15;          /* Background */
+      --fg: #e8edf2;          /* Font color */
+      --card: #131a22;        /* Card color */
       --border: #334155;
       --accent: #3a7bfd;
       --chip: #0f1620;
@@ -18,25 +18,48 @@
     body { margin:0; min-height:100dvh; display:grid; place-items:center; background:var(--bg); color:var(--fg); }
     .wrap { width:clamp(320px, 90vw, 920px); }
 
-    /* TOPBAR */
-    .topbar { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:14px 0 6px; }
-    .leftbrand { opacity:.8; font-weight:600; }
-    .topright { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-    .iconbtn, .select {
-      border:1px solid var(--border); background:transparent; color:var(--fg);
-      border-radius:10px; padding:8px 10px; cursor:pointer; font:inherit;
+    /* ---- FIXED UX (Eye + Palette) ---- */
+    .ux-fixed{
+      position: fixed; top: 12px; right: 12px; z-index: 9999;
+      display: grid; gap: 8px; justify-items: end;
     }
-    .iconbtn:hover, .select:hover { border-color: var(--accent); }
-    .select { padding:8px 10px; }
+    .iconbtn{
+      border:1px solid var(--border); background:rgba(0,0,0,.25);
+      backdrop-filter: blur(6px);
+      color:#fff; border-radius:12px; padding:8px 10px; cursor:pointer;
+    }
+    .iconbtn:hover{ border-color: var(--accent); }
+    .tray{
+      display:flex; gap:8px; flex-wrap:wrap; align-items:center;
+      background:rgba(0,0,0,.18); border:1px solid var(--border);
+      border-radius:12px; padding:8px; backdrop-filter: blur(6px);
+    }
+    .group{ display:flex; gap:6px; align-items:center; }
+    .label{ font-size:.8rem; opacity:.9; color:#fff; margin-right:2px; }
 
-    /* Controls/Search */
+    .swatch{
+      width:28px; height:28px; border-radius:8px; border:1px solid var(--border);
+      cursor:pointer; display:grid; place-items:center; font-size:.9rem; user-select:none;
+      color:#0b0f15; /* only used for font preview "A" when needed */
+      background:#fff;
+      outline: none;
+    }
+    .swatch[data-selected="1"]{
+      box-shadow: 0 0 0 2px var(--accent) inset, 0 0 0 1px var(--accent);
+      border-color: var(--accent);
+    }
+    .swatch.font{ background:#fff; color:#111; }
+    .swatch.font.dark { background:#0b0f15; color:#0b0f15; }
+    .swatch.font.light{ background:#ffffff; color:#ffffff; }
+    .swatch.font.A::after{ content:"A"; font-weight:700; }
+
+    /* Controls/Search/Tags/Card */
     .controls { display:flex; gap:10px; margin:12px 0 10px; flex-wrap:wrap; }
     .search { flex:1; min-width:220px; padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:var(--chip); color:var(--fg); }
     .tagbar { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 16px; }
     .tag { cursor:pointer; padding:6px 10px; border-radius:999px; border:1px solid var(--border); background:transparent; color:var(--fg); font-size:.9rem; }
     .tag.active { border-color:#3a7bfd; box-shadow:0 0 0 2px rgba(58,123,253,.25) inset; }
 
-    /* Card */
     .card { max-width:920px; padding:28px; border-radius:18px; background:var(--card); box-shadow:0 10px 30px rgba(0,0,0,.35); border:1px solid var(--border); }
     .quote { font-size:1.5rem; line-height:1.45; margin:0 0 14px; }
     .author { opacity:.85; margin:0 0 8px; }
@@ -58,8 +81,7 @@
     .tagline { margin-top:8px; display:flex; gap:6px; flex-wrap:wrap; }
     .ctabtn { padding:6px 10px; border-radius:10px; border:1px dashed #334155; background:transparent; color:var(--fg); font-size:.85rem; cursor:pointer; }
 
-    /* Fokus-Modus: alles außer Zitat/Autor/Quelle ausblenden */
-    .focus-only .decor,
+    /* Focus mode: hide everything (except quote/author/source) */
     .focus-only .controls,
     .focus-only #tagBar,
     .focus-only #currentTags,
@@ -67,79 +89,80 @@
     .focus-only footer,
     .focus-only #related { display:none !important; }
 
-    /* Hilfsklasse, um gezielt Bereiche als „Deko“ zu markieren */
-    .decor {}
-
+    /* keep the fixed eye + tray always visible */
+    .focus-only .ux-fixed { display: grid !important; }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <!-- TOP BAR -->
-    <div class="topbar decor">
-      <div class="leftbrand">Daily Quotes</div>
-      <div class="topright">
-        <!-- Farbpaletten -->
-        <select id="bgSelect" class="select" title="Background">
-          <option value="default">BG: Default Dark</option>
-          <option value="pastel-pink">BG: Pastel Pink</option>
-          <option value="pastel-purple">BG: Pastel Purple</option>
-          <option value="pastel-blue">BG: Pastel Blue</option>
-          <option value="pastel-mint">BG: Pastel Mint</option>
-          <option value="pastel-peach">BG: Pastel Peach</option>
-        </select>
-        <select id="cardSelect" class="select" title="Box">
-          <option value="default">Box: Default Dark</option>
-          <option value="pastel-pink">Box: Pastel Pink</option>
-          <option value="pastel-purple">Box: Pastel Purple</option>
-          <option value="pastel-blue">Box: Pastel Blue</option>
-          <option value="pastel-mint">Box: Pastel Mint</option>
-          <option value="pastel-peach">Box: Pastel Peach</option>
-        </select>
-        <select id="fontSelect" class="select" title="Font">
-          <option value="default">Font: Default</option>
-          <option value="dark">Font: Dark</option>
-          <option value="light">Font: Light</option>
-          <option value="pink">Font: Pink</option>
-          <option value="purple">Font: Purple</option>
-          <option value="blue">Font: Blue</option>
-          <option value="mint">Font: Mint</option>
-          <option value="peach">Font: Peach</option>
-        </select>
-
-        <!-- Fokus/Auge -->
-        <button id="focusBtn" class="iconbtn" title="Fokusmodus (alles ausblenden außer Zitat)">👁️</button>
+  <!-- Fixed Eye + Palette (always visible) -->
+  <div class="ux-fixed">
+    <button id="focusBtn" class="iconbtn" title="Fokusmodus umschalten">👁️</button>
+    <div class="tray" id="paletteTray">
+      <div class="group" id="bgGroup">
+        <span class="label">BG</span>
+        <!-- BG swatches -->
+        <button class="swatch" data-type="bg" data-key="default"    title="Default"></button>
+        <button class="swatch" data-type="bg" data-key="pastel-pink"   title="Pastel Pink"></button>
+        <button class="swatch" data-type="bg" data-key="pastel-purple" title="Pastel Purple"></button>
+        <button class="swatch" data-type="bg" data-key="pastel-blue"   title="Pastel Blue"></button>
+        <button class="swatch" data-type="bg" data-key="pastel-mint"   title="Pastel Mint"></button>
+        <button class="swatch" data-type="bg" data-key="pastel-peach"  title="Pastel Peach"></button>
+      </div>
+      <div class="group" id="cardGroup">
+        <span class="label">Box</span>
+        <!-- Card swatches -->
+        <button class="swatch" data-type="card" data-key="default"    title="Default"></button>
+        <button class="swatch" data-type="card" data-key="pastel-pink"   title="Pastel Pink"></button>
+        <button class="swatch" data-type="card" data-key="pastel-purple" title="Pastel Purple"></button>
+        <button class="swatch" data-type="card" data-key="pastel-blue"   title="Pastel Blue"></button>
+        <button class="swatch" data-type="card" data-key="pastel-mint"   title="Pastel Mint"></button>
+        <button class="swatch" data-type="card" data-key="pastel-peach"  title="Pastel Peach"></button>
+      </div>
+      <div class="group" id="fontGroup">
+        <span class="label">Font</span>
+        <!-- Font color swatches (show an "A") -->
+        <button class="swatch font A" data-type="font" data-key="default" title="Default" style="background:#e8edf2;color:#e8edf2;"></button>
+        <button class="swatch font A" data-type="font" data-key="dark"    title="Dark"    style="background:#0b0f15;color:#0b0f15;"></button>
+        <button class="swatch font A" data-type="font" data-key="light"   title="Light"   style="background:#ffffff;color:#ffffff;"></button>
+        <button class="swatch font A" data-type="font" data-key="pink"    title="Pink"    style="background:#c026d3;color:#c026d3;"></button>
+        <button class="swatch font A" data-type="font" data-key="purple"  title="Purple"  style="background:#7c3aed;color:#7c3aed;"></button>
+        <button class="swatch font A" data-type="font" data-key="blue"    title="Blue"    style="background:#2563eb;color:#2563eb;"></button>
+        <button class="swatch font A" data-type="font" data-key="mint"    title="Mint"    style="background:#059669;color:#059669;"></button>
+        <button class="swatch font A" data-type="font" data-key="peach"   title="Peach"   style="background:#ea580c;color:#ea580c;"></button>
       </div>
     </div>
+  </div>
 
-    <!-- Suchfeld + Reset -->
+  <div class="wrap">
+    <!-- Controls -->
     <div class="controls">
       <input id="searchInput" class="search" placeholder="Suche: Text, Autor, Quelle…" />
       <button class="ghost" id="clearFilterBtn" title="Filter zurücksetzen">Filter zurücksetzen</button>
     </div>
 
-    <!-- Tag-Leiste -->
+    <!-- Tags -->
     <div id="tagBar" class="tagbar"></div>
 
-    <!-- Hauptkarte -->
+    <!-- Card -->
     <main class="card">
       <p class="quote" id="quote">…</p>
       <p class="author" id="author"></p>
       <p class="source" id="source"></p>
 
-      <!-- Tags der aktuellen Quote -->
-      <div id="currentTags" class="tagline decor"></div>
+      <!-- Current tags -->
+      <div id="currentTags" class="tagline"></div>
 
-      <div class="row decor">
+      <div class="row">
         <button class="ghost" id="prevBtn">Zurück</button>
         <button class="primary" id="nextBtn">Nächste</button>
         <button class="ghost" id="shuffleBtn">Zufall</button>
         <button class="ghost" id="shareBtn">Teilen</button>
       </div>
 
-      <footer id="footer" class="decor"></footer>
+      <footer id="footer"></footer>
 
-      <!-- Related-Panel -->
-      <section id="related" class="related decor" style="display:none">
+      <!-- Related -->
+      <section id="related" class="related" style="display:none">
         <h3 id="relatedTitle">Weitere Zitate</h3>
         <div id="relatedList" class="related-list"></div>
       </section>
@@ -149,15 +172,10 @@
   <script>
     // --- STATE ---
     const state = {
-      quotes: [],          // alle
-      filtered: [],        // nach Suche/Tags
-      idx: 0,              // aktueller Index in getList()
-      allTags: [],         // verfügbare Tags
-      activeTags: new Set(),
-      query: ""
+      quotes: [], filtered: [], idx: 0,
+      allTags: [], activeTags: new Set(), query: ""
     };
 
-    // --- PREFS KEYS ---
     const PREFS = {
       focus: 'dq_focus_only',
       bg: 'dq_bg_palette',
@@ -166,11 +184,11 @@
     };
 
     // --- UTILS ---
-    function normalize(s){ return (s || "").toLowerCase(); }
-    function getList(){ return state.filtered.length ? state.filtered : state.quotes; }
-    function dailyIndex(len) {
-      const d = new Date();
-      const days = Math.floor(d.getTime() / 86400000);
+    const normalize = s => (s || "").toLowerCase();
+    const getList = () => state.filtered.length ? state.filtered : state.quotes;
+
+    function dailyIndex(len){
+      const d = new Date(); const days = Math.floor(d.getTime() / 86400000);
       return (days % len + len) % len;
     }
     function uniqSortedTags(quotes){
@@ -178,62 +196,98 @@
       quotes.forEach(q => (q.tags || []).forEach(t => s.add(t)));
       return Array.from(s).sort((a,b)=>a.localeCompare(b));
     }
+    const setCSS = (k,v)=> document.documentElement.style.setProperty(k,v);
 
-    // --- PALETTEN (Pastell/Default) ---
+    // Palettes (same keys used on swatches)
     const palettes = {
       bg: {
-        "default": () => setCSS('--bg', '#0b0f15'),
-        "pastel-pink": () => setCSS('--bg', 'linear-gradient(135deg, #ffd6e7 0%, #ffe9f2 60%, #fffafc 100%)'),
-        "pastel-purple": () => setCSS('--bg', 'linear-gradient(135deg, #e8d9ff 0%, #f0e6ff 60%, #fbf8ff 100%)'),
-        "pastel-blue": () => setCSS('--bg', 'linear-gradient(135deg, #d7ecff 0%, #e8f4ff 60%, #f8fbff 100%)'),
-        "pastel-mint": () => setCSS('--bg', 'linear-gradient(135deg, #dff8ef 0%, #eafaf4 60%, #f7fdfb 100%)'),
-        "pastel-peach": () => setCSS('--bg', 'linear-gradient(135deg, #ffe4d1 0%, #fff0e5 60%, #fff8f2 100%)')
+        "default": ()=> setCSS('--bg', '#0b0f15'),
+        "pastel-pink": ()=> setCSS('--bg', 'linear-gradient(135deg, #ffd6e7 0%, #ffe9f2 60%, #fffafc 100%)'),
+        "pastel-purple": ()=> setCSS('--bg', 'linear-gradient(135deg, #e8d9ff 0%, #f0e6ff 60%, #fbf8ff 100%)'),
+        "pastel-blue": ()=> setCSS('--bg', 'linear-gradient(135deg, #d7ecff 0%, #e8f4ff 60%, #f8fbff 100%)'),
+        "pastel-mint": ()=> setCSS('--bg', 'linear-gradient(135deg, #dff8ef 0%, #eafaf4 60%, #f7fdfb 100%)'),
+        "pastel-peach": ()=> setCSS('--bg', 'linear-gradient(135deg, #ffe4d1 0%, #fff0e5 60%, #fff8f2 100%)')
       },
       card: {
-        "default": () => setCSS('--card', '#131a22'),
-        "pastel-pink": () => setCSS('--card', '#ffe9f2'),
-        "pastel-purple": () => setCSS('--card', '#f0e6ff'),
-        "pastel-blue": () => setCSS('--card', '#e8f4ff'),
-        "pastel-mint": () => setCSS('--card', '#eafaf4'),
-        "pastel-peach": () => setCSS('--card', '#fff0e5')
+        "default": ()=> setCSS('--card', '#131a22'),
+        "pastel-pink": ()=> setCSS('--card', '#ffe9f2'),
+        "pastel-purple": ()=> setCSS('--card', '#f0e6ff'),
+        "pastel-blue": ()=> setCSS('--card', '#e8f4ff'),
+        "pastel-mint": ()=> setCSS('--card', '#eafaf4'),
+        "pastel-peach": ()=> setCSS('--card', '#fff0e5')
       },
       font: {
-        "default": () => setCSS('--fg', '#e8edf2'),
-        "dark":    () => setCSS('--fg', '#0b0f15'),
-        "light":   () => setCSS('--fg', '#ffffff'),
-        "pink":    () => setCSS('--fg', '#c026d3'),
-        "purple":  () => setCSS('--fg', '#7c3aed'),
-        "blue":    () => setCSS('--fg', '#2563eb'),
-        "mint":    () => setCSS('--fg', '#059669'),
-        "peach":   () => setCSS('--fg', '#ea580c')
+        "default": ()=> setCSS('--fg', '#e8edf2'),
+        "dark": ()=> setCSS('--fg', '#0b0f15'),
+        "light": ()=> setCSS('--fg', '#ffffff'),
+        "pink": ()=> setCSS('--fg', '#c026d3'),
+        "purple": ()=> setCSS('--fg', '#7c3aed'),
+        "blue": ()=> setCSS('--fg', '#2563eb'),
+        "mint": ()=> setCSS('--fg', '#059669'),
+        "peach": ()=> setCSS('--fg', '#ea580c')
       }
     };
-    function setCSS(varName, val){ document.documentElement.style.setProperty(varName, val); }
+
+    function markSelected(groupType, key){
+      // clear
+      document.querySelectorAll(`.swatch[data-type="${groupType}"]`).forEach(el=> el.dataset.selected = "0");
+      // set
+      const el = document.querySelector(`.swatch[data-type="${groupType}"][data-key="${key}"]`);
+      if (el) el.dataset.selected = "1";
+    }
 
     function applySavedPalettes(){
       const bg = localStorage.getItem(PREFS.bg) || 'default';
       const card = localStorage.getItem(PREFS.card) || 'default';
       const font = localStorage.getItem(PREFS.font) || 'default';
       palettes.bg[bg](); palettes.card[card](); palettes.font[font]();
-      // select UI vorbesetzen
-      document.getElementById('bgSelect').value = bg;
-      document.getElementById('cardSelect').value = card;
-      document.getElementById('fontSelect').value = font;
+      markSelected('bg', bg); markSelected('card', card); markSelected('font', font);
+      // Paint BG swatches with actual gradients/colors
+      paintSwatches();
     }
 
-    function bindPaletteSelects(){
-      document.getElementById('bgSelect').onchange = (e)=>{
-        const v = e.target.value; localStorage.setItem(PREFS.bg, v); palettes.bg[v]();
-      };
-      document.getElementById('cardSelect').onchange = (e)=>{
-        const v = e.target.value; localStorage.setItem(PREFS.card, v); palettes.card[v]();
-      };
-      document.getElementById('fontSelect').onchange = (e)=>{
-        const v = e.target.value; localStorage.setItem(PREFS.font, v); palettes.font[v]();
-      };
+    function bindPaletteSwatches(){
+      document.querySelectorAll('.swatch').forEach(sw=>{
+        sw.addEventListener('click', ()=>{
+          const type = sw.dataset.type, key = sw.dataset.key;
+          palettes[type][key]();
+          localStorage.setItem(PREFS[type], key);
+          markSelected(type, key);
+        });
+      });
     }
 
-    // --- FOKUSMODUS ---
+    function paintSwatches(){
+      // BG preview
+      const bgMap = {
+        "default": "#0b0f15",
+        "pastel-pink": "linear-gradient(135deg, #ffd6e7, #ffe9f2, #fffafc)",
+        "pastel-purple": "linear-gradient(135deg, #e8d9ff, #f0e6ff, #fbf8ff)",
+        "pastel-blue": "linear-gradient(135deg, #d7ecff, #e8f4ff, #f8fbff)",
+        "pastel-mint": "linear-gradient(135deg, #dff8ef, #eafaf4, #f7fdfb)",
+        "pastel-peach": "linear-gradient(135deg, #ffe4d1, #fff0e5, #fff8f2)"
+      };
+      document.querySelectorAll('.swatch[data-type="bg"]').forEach(sw=>{
+        sw.style.background = bgMap[sw.dataset.key];
+      });
+
+      // Card preview
+      const cardMap = {
+        "default": "#131a22",
+        "pastel-pink": "#ffe9f2",
+        "pastel-purple": "#f0e6ff",
+        "pastel-blue": "#e8f4ff",
+        "pastel-mint": "#eafaf4",
+        "pastel-peach": "#fff0e5"
+      };
+      document.querySelectorAll('.swatch[data-type="card"]').forEach(sw=>{
+        sw.style.background = cardMap[sw.dataset.key];
+      });
+
+      // Font preview handled inline with styles (we already set backgrounds to the color).
+    }
+
+    // Focus
     function applyFocus(flag){
       document.body.classList.toggle('focus-only', !!flag);
       localStorage.setItem(PREFS.focus, flag ? '1' : '0');
@@ -243,27 +297,31 @@
       applyFocus(!cur);
     }
 
-    // --- LOAD ---
-    async function loadQuotes() {
+    // --- LOAD & RENDER & FILTER (unchanged core) ---
+    function uniqSortedTags(quotes){
+      const s = new Set();
+      quotes.forEach(q => (q.tags || []).forEach(t => s.add(t)));
+      return Array.from(s).sort((a,b)=>a.localeCompare(b));
+    }
+
+    async function loadQuotes(){
       const res = await fetch('quotes.json', { cache: 'no-store' });
       const data = await res.json();
       state.quotes = data;
       state.allTags = uniqSortedTags(data);
       buildTagBar();
       state.idx = dailyIndex(state.quotes.length);
-      applyFilter(); // initial
+      applyFilter();
       attachEvents();
 
-      // UI-Prefs anwenden
       applySavedPalettes();
-      bindPaletteSelects();
+      bindPaletteSwatches();
       applyFocus(localStorage.getItem(PREFS.focus) === '1');
     }
 
-    // --- RENDER ---
-    function render() {
+    function render(){
       const list = getList();
-      if (!list.length) {
+      if (!list.length){
         document.getElementById('quote').textContent = "Keine Treffer.";
         document.getElementById('author').textContent = "";
         document.getElementById('source').textContent = "";
@@ -273,13 +331,11 @@
         return;
       }
       const q = list[state.idx];
-
       document.getElementById('quote').textContent = `„${q.text}“`;
       document.getElementById('author').textContent = q.author ? `— ${q.author}` : '';
       document.getElementById('source').textContent = q.source ? `Quelle: ${q.source}` : '';
       document.getElementById('footer').textContent = `${state.idx+1}/${list.length}`;
 
-      // Tags der aktuellen Quote
       const ct = document.getElementById('currentTags');
       ct.innerHTML = "";
       (q.tags || []).forEach(tag=>{
@@ -290,16 +346,14 @@
         ct.appendChild(b);
       });
 
-      // Wenn Filter aktiv ist, Tagbar-Buttons als aktiv markieren
       syncTagBarActive();
     }
 
-    // --- FILTER / SUCHE ---
     function applyFilter(){
       const q = normalize(state.query);
       const needTags = state.activeTags;
 
-      state.filtered = state.quotes.filter(item => {
+      state.filtered = state.quotes.filter(item=>{
         const hay = `${item.text}\n${item.author||""}\n${item.source||""}`;
         const matchQ = !q || normalize(hay).includes(q);
         const tags = new Set(item.tags || []);
@@ -311,12 +365,10 @@
       if (!list.length) state.idx = 0;
       else state.idx = Math.min(state.idx, list.length - 1);
 
-      // related Panel schließen, wenn Filter wechselt
       document.getElementById('related').style.display = "none";
       render();
     }
 
-    // --- TAGBAR ---
     function buildTagBar(){
       const bar = document.getElementById('tagBar');
       bar.innerHTML = "";
@@ -325,7 +377,7 @@
         btn.className = 'tag';
         btn.textContent = tag;
         btn.dataset.tag = tag;
-        btn.onclick = () => {
+        btn.onclick = ()=>{
           if (state.activeTags.has(tag)) state.activeTags.delete(tag);
           else state.activeTags.add(tag);
           applyFilter();
@@ -343,7 +395,6 @@
       });
     }
 
-    // --- RELATED LIST (gleicher Tag) ---
     function showRelated(tag, currentQuote){
       const pool = state.quotes.filter(x => (x.tags||[]).includes(tag));
       const list = pool.filter(x => x !== currentQuote);
@@ -388,25 +439,17 @@
       sec.style.display = "block";
     }
 
-    // --- NAVIGATION ---
     function next(n=1){
-      const list = getList();
-      if (!list.length) return;
+      const list = getList(); if (!list.length) return;
       state.idx = (state.idx + n + list.length) % list.length;
       render();
     }
-
     function randomJump(){
-      const list = getList();
-      if (!list.length) return;
-      let n;
-      do { n = Math.floor(Math.random() * list.length); }
-      while (list.length > 1 && n === state.idx);
-      state.idx = n;
-      render();
+      const list = getList(); if (!list.length) return;
+      let n; do { n = Math.floor(Math.random() * list.length); } while (list.length > 1 && n === state.idx);
+      state.idx = n; render();
     }
 
-    // --- EVENTS ---
     function attachEvents(){
       document.getElementById('nextBtn').onclick = () => next(1);
       document.getElementById('prevBtn').onclick = () => next(-1);
@@ -415,31 +458,24 @@
       document.getElementById('shareBtn').onclick = async () => {
         const q = getList()[state.idx];
         const text = `„${q.text}“ — ${q.author || 'Unbekannt'}${q.source ? `\nQuelle: ${q.source}`:''}`;
-        if (navigator.share) {
-          try { await navigator.share({ text }); } catch {}
-        } else {
-          navigator.clipboard.writeText(text);
-          alert('In Zwischenablage kopiert!');
-        }
+        if (navigator.share) { try { await navigator.share({ text }); } catch {} }
+        else { navigator.clipboard.writeText(text); alert('In Zwischenablage kopiert!'); }
       };
 
       document.getElementById('searchInput').addEventListener('input', (e)=>{
-        state.query = e.target.value;
-        applyFilter();
+        state.query = e.target.value; applyFilter();
       });
-
       document.getElementById('clearFilterBtn').onclick = ()=>{
-        state.query = "";
-        state.activeTags.clear();
-        document.getElementById('searchInput').value = "";
-        applyFilter();
+        state.query = ""; state.activeTags.clear(); document.getElementById('searchInput').value = ""; applyFilter();
       };
 
-      // Focus button
       document.getElementById('focusBtn').onclick = toggleFocus;
+
+      // ESC exits focus quickly
+      window.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') applyFocus(false); });
     }
 
-    // --- GO ---
+    // GO
     loadQuotes();
   </script>
 </body>
