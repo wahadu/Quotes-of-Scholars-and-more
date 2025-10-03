@@ -7,35 +7,85 @@
   <style>
     :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
     body { margin:0; min-height:100dvh; display:grid; place-items:center; background:#0b0f15; color:#e8edf2; }
-    .card { max-width:720px; width:clamp(320px,90vw,720px); padding:28px; border-radius:18px; background:#131a22; box-shadow:0 10px 30px rgba(0,0,0,.35); }
+    .wrap { width:clamp(320px, 90vw, 920px); }
+    .controls { display:flex; gap:10px; margin:18px 0 10px; flex-wrap:wrap; }
+    .search { flex:1; min-width:220px; padding:10px 12px; border-radius:12px; border:1px solid #334155; background:#0f1620; color:#e8edf2; }
+    .tagbar { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 16px; }
+    .tag { cursor:pointer; padding:6px 10px; border-radius:999px; border:1px solid #334155; background:transparent; color:#e8edf2; font-size:.9rem; }
+    .tag.active { border-color:#3a7bfd; box-shadow:0 0 0 2px rgba(58,123,253,.25) inset; }
+    .card { max-width:920px; padding:28px; border-radius:18px; background:#131a22; box-shadow:0 10px 30px rgba(0,0,0,.35); }
     .quote { font-size:1.5rem; line-height:1.45; margin:0 0 14px; }
-    .author { opacity:.8; margin:0 0 8px; }
-    .source { opacity:.6; font-style:italic; }
-    .row { display:flex; gap:10px; margin-top:18px; }
+    .author { opacity:.85; margin:0 0 8px; }
+    .source { opacity:.65; font-style:italic; }
+    .row { display:flex; gap:10px; margin-top:18px; flex-wrap:wrap; }
     button { cursor:pointer; border:0; padding:10px 14px; border-radius:12px; }
     .primary { background:#3a7bfd; color:#fff; }
     .ghost { background:transparent; border:1px solid #334155; color:#e8edf2; }
     footer { margin-top:14px; opacity:.45; font-size:.9rem; text-align:center; }
+
+    /* Related-Panel */
+    .related { margin-top:16px; padding-top:10px; border-top:1px solid #223; }
+    .related h3 { margin:0 0 8px; font-size:1rem; opacity:.8; }
+    .related-list { display:grid; gap:8px; }
+    .rel-item { background:#0f1620; border:1px solid #223; border-radius:12px; padding:10px 12px; cursor:pointer; }
+    .rel-item:hover { border-color:#3a7bfd; }
+    .muted { opacity:.6; font-size:.9rem; }
+
+    .tagline { margin-top:8px; display:flex; gap:6px; flex-wrap:wrap; }
+    .ctabtn { padding:6px 10px; border-radius:10px; border:1px dashed #334155; background:transparent; color:#e8edf2; font-size:.85rem; cursor:pointer; }
   </style>
 </head>
 <body>
-  <main class="card">
-    <p class="quote" id="quote">…</p>
-    <p class="author" id="author"></p>
-    <p class="source" id="source"></p>
-
-    <div class="row">
-      <button class="ghost" id="prevBtn">Zurück</button>
-      <button class="primary" id="nextBtn">Nächste</button>
-      <button class="ghost" id="shuffleBtn">Zufall</button>
-      <button class="ghost" id="shareBtn">Teilen</button>
+  <div class="wrap">
+    <!-- Suchfeld + Reset -->
+    <div class="controls">
+      <input id="searchInput" class="search" placeholder="Suche: Text, Autor, Quelle…" />
+      <button class="ghost" id="clearFilterBtn" title="Filter zurücksetzen">Filter zurücksetzen</button>
     </div>
 
-    <footer id="footer"></footer>
-  </main>
+    <!-- Tag-Leiste -->
+    <div id="tagBar" class="tagbar"></div>
+
+    <!-- Hauptkarte -->
+    <main class="card">
+      <p class="quote" id="quote">…</p>
+      <p class="author" id="author"></p>
+      <p class="source" id="source"></p>
+
+      <!-- Tags der aktuellen Quote -->
+      <div id="currentTags" class="tagline"></div>
+
+      <div class="row">
+        <button class="ghost" id="prevBtn">Zurück</button>
+        <button class="primary" id="nextBtn">Nächste</button>
+        <button class="ghost" id="shuffleBtn">Zufall</button>
+        <button class="ghost" id="shareBtn">Teilen</button>
+      </div>
+
+      <footer id="footer"></footer>
+
+      <!-- Related-Panel -->
+      <section id="related" class="related" style="display:none">
+        <h3 id="relatedTitle">Weitere Zitate</h3>
+        <div id="relatedList" class="related-list"></div>
+      </section>
+    </main>
+  </div>
 
   <script>
-    const state = { quotes: [], idx: 0 };
+    // --- STATE ---
+    const state = {
+      quotes: [],          // alle
+      filtered: [],        // nach Suche/Tags
+      idx: 0,              // aktueller Index in getList()
+      allTags: [],         // verfügbare Tags
+      activeTags: new Set(),
+      query: ""
+    };
+
+    // --- UTILS ---
+    function normalize(s){ return (s || "").toLowerCase(); }
+    function getList(){ return state.filtered.length ? state.filtered : state.quotes; }
 
     function dailyIndex(len) {
       const d = new Date();
@@ -43,48 +93,206 @@
       return (days % len + len) % len;
     }
 
+    function uniqSortedTags(quotes){
+      const s = new Set();
+      quotes.forEach(q => (q.tags || []).forEach(t => s.add(t)));
+      return Array.from(s).sort((a,b)=>a.localeCompare(b));
+    }
+
+    // --- LOAD ---
     async function loadQuotes() {
       const res = await fetch('quotes.json', { cache: 'no-store' });
       const data = await res.json();
       state.quotes = data;
+      state.allTags = uniqSortedTags(data);
+      buildTagBar();
       state.idx = dailyIndex(state.quotes.length);
-      render();
+      applyFilter(); // initiale Filterung (leer)
+      attachEvents();
     }
 
+    // --- RENDER ---
     function render() {
-      if (!state.quotes.length) return;
-      const q = state.quotes[state.idx];
+      const list = getList();
+      if (!list.length) {
+        document.getElementById('quote').textContent = "Keine Treffer.";
+        document.getElementById('author').textContent = "";
+        document.getElementById('source').textContent = "";
+        document.getElementById('footer').textContent = "0/0";
+        document.getElementById('currentTags').innerHTML = "";
+        document.getElementById('related').style.display = "none";
+        return;
+      }
+      const q = list[state.idx];
+
       document.getElementById('quote').textContent = `„${q.text}“`;
       document.getElementById('author').textContent = q.author ? `— ${q.author}` : '';
       document.getElementById('source').textContent = q.source ? `Quelle: ${q.source}` : '';
-      document.getElementById('footer').textContent = `${state.idx+1}/${state.quotes.length}`;
+      document.getElementById('footer').textContent = `${state.idx+1}/${list.length}`;
+
+      // Tags der aktuellen Quote
+      const ct = document.getElementById('currentTags');
+      ct.innerHTML = "";
+      (q.tags || []).forEach(tag=>{
+        const b = document.createElement('button');
+        b.className = 'ctabtn';
+        b.textContent = `#${tag}`;
+        b.onclick = () => showRelated(tag, q);
+        ct.appendChild(b);
+      });
+
+      // Wenn Filter aktiv ist, Tagbar-Buttons als aktiv markieren
+      syncTagBarActive();
     }
-    function randomJump(){
-  if (!state.quotes.length) return;
-  let n;
-  do { n = Math.floor(Math.random() * state.quotes.length); }
-  while (state.quotes.length > 1 && n === state.idx);
-  state.idx = n;
-  render();
-}
 
-document.getElementById('shuffleBtn').onclick = randomJump;
+    // --- FILTER / SUCHE ---
+    function applyFilter(){
+      const q = normalize(state.query);
+      const needTags = state.activeTags;
 
-    function next(n=1){ state.idx = (state.idx + n + state.quotes.length) % state.quotes.length; render(); }
+      state.filtered = state.quotes.filter(item => {
+        const hay = `${item.text}\n${item.author||""}\n${item.source||""}`;
+        const matchQ = !q || normalize(hay).includes(q);
+        const tags = new Set(item.tags || []);
+        const matchTags = needTags.size === 0 || [...needTags].every(t => tags.has(t));
+        return matchQ && matchTags;
+      });
 
-    document.getElementById('nextBtn').onclick = () => next(1);
-    document.getElementById('prevBtn').onclick = () => next(-1);
-    document.getElementById('shareBtn').onclick = async () => {
-      const q = state.quotes[state.idx];
-      const text = `„${q.text}“ — ${q.author || 'Unbekannt'}${q.source ? `\nQuelle: ${q.source}`:''}`;
-      if (navigator.share) {
-        try { await navigator.share({ text }); } catch {}
-      } else {
-        navigator.clipboard.writeText(text);
-        alert('In Zwischenablage kopiert!');
+      const list = getList();
+      if (!list.length) state.idx = 0;
+      else state.idx = Math.min(state.idx, list.length - 1);
+
+      // related Panel schließen, wenn Filter wechselt
+      document.getElementById('related').style.display = "none";
+      render();
+    }
+
+    // --- TAGBAR ---
+    function buildTagBar(){
+      const bar = document.getElementById('tagBar');
+      bar.innerHTML = "";
+      state.allTags.forEach(tag=>{
+        const btn = document.createElement('button');
+        btn.className = 'tag';
+        btn.textContent = tag;
+        btn.dataset.tag = tag;
+        btn.onclick = () => {
+          if (state.activeTags.has(tag)) state.activeTags.delete(tag);
+          else state.activeTags.add(tag);
+          applyFilter();
+        };
+        bar.appendChild(btn);
+      });
+      syncTagBarActive();
+    }
+
+    function syncTagBarActive(){
+      const btns = document.querySelectorAll('#tagBar .tag');
+      btns.forEach(b=>{
+        const t = b.dataset.tag;
+        b.classList.toggle('active', state.activeTags.has(t));
+      });
+    }
+
+    // --- RELATED LIST (gleicher Tag) ---
+    function showRelated(tag, currentQuote){
+      // Liste aus *allen* Quotes mit gleichem Tag (nicht nur gefilterten)
+      const pool = state.quotes.filter(x => (x.tags||[]).includes(tag));
+      // Den aktuellen entfernen
+      const list = pool.filter(x => x !== currentQuote);
+
+      const sec = document.getElementById('related');
+      const title = document.getElementById('relatedTitle');
+      const ul = document.getElementById('relatedList');
+      ul.innerHTML = "";
+
+      if (!list.length){
+        title.textContent = `Weitere Zitate: #${tag} (keine weiteren)`;
+        sec.style.display = "block";
+        return;
       }
-    };
 
+      title.textContent = `Weitere Zitate: #${tag}`;
+      list.forEach(item=>{
+        const div = document.createElement('div');
+        div.className = 'rel-item';
+        const textPreview = item.text.length > 140 ? item.text.slice(0,140)+"…" : item.text;
+        div.innerHTML = `
+          <div>„${textPreview}“</div>
+          <div class="muted">${item.author ? '— ' + item.author : ''} ${item.source ? ' · ' + item.source : ''}</div>
+        `;
+        div.onclick = ()=>{
+          // auf dieses Zitat springen: wir suchen seinen Index in der *aktuellen* Liste (falls gefiltert)
+          const listNow = getList();
+          const i = listNow.indexOf(item);
+          if (i >= 0) { state.idx = i; render(); }
+          else {
+            // falls es in der Filterliste nicht ist, Filter leeren und dann dahin springen
+            state.activeTags.clear();
+            state.query = "";
+            document.getElementById('searchInput').value = "";
+            applyFilter();
+            const j = state.quotes.indexOf(item);
+            if (j >= 0) { state.idx = j; render(); }
+          }
+          // Panel schließen
+          document.getElementById('related').style.display = "none";
+        };
+        ul.appendChild(div);
+      });
+
+      sec.style.display = "block";
+    }
+
+    // --- NAVIGATION ---
+    function next(n=1){
+      const list = getList();
+      if (!list.length) return;
+      state.idx = (state.idx + n + list.length) % list.length;
+      render();
+    }
+
+    function randomJump(){
+      const list = getList();
+      if (!list.length) return;
+      let n;
+      do { n = Math.floor(Math.random() * list.length); }
+      while (list.length > 1 && n === state.idx);
+      state.idx = n;
+      render();
+    }
+
+    // --- EVENTS ---
+    function attachEvents(){
+      document.getElementById('nextBtn').onclick = () => next(1);
+      document.getElementById('prevBtn').onclick = () => next(-1);
+      document.getElementById('shuffleBtn').onclick = randomJump;
+
+      document.getElementById('shareBtn').onclick = async () => {
+        const q = getList()[state.idx];
+        const text = `„${q.text}“ — ${q.author || 'Unbekannt'}${q.source ? `\nQuelle: ${q.source}`:''}`;
+        if (navigator.share) {
+          try { await navigator.share({ text }); } catch {}
+        } else {
+          navigator.clipboard.writeText(text);
+          alert('In Zwischenablage kopiert!');
+        }
+      };
+
+      document.getElementById('searchInput').addEventListener('input', (e)=>{
+        state.query = e.target.value;
+        applyFilter();
+      });
+
+      document.getElementById('clearFilterBtn').onclick = ()=>{
+        state.query = "";
+        state.activeTags.clear();
+        document.getElementById('searchInput').value = "";
+        applyFilter();
+      };
+    }
+
+    // --- GO ---
     loadQuotes();
   </script>
 </body>
