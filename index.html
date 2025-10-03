@@ -59,6 +59,16 @@
       document.getElementById('source').textContent = q.source ? `Quelle: ${q.source}` : '';
       document.getElementById('footer').textContent = `${state.idx+1}/${state.quotes.length}`;
     }
+    function randomJump(){
+  if (!state.quotes.length) return;
+  let n;
+  do { n = Math.floor(Math.random() * state.quotes.length); }
+  while (state.quotes.length > 1 && n === state.idx);
+  state.idx = n;
+  render();
+}
+
+document.getElementById('shuffleBtn').onclick = randomJump;
 
     function next(n=1){ state.idx = (state.idx + n + state.quotes.length) % state.quotes.length; render(); }
 
