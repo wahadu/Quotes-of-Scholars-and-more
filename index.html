@@ -20,7 +20,7 @@
 
     /* ---- FIXED UX (Eye + Palette) ---- */
     .ux-fixed{
-      position: fixed; top: 12px; right: 12px; z-index: 9999;
+      position: fixed; top: 12px; right: 12px; z-index: 99999;
       display: grid; gap: 8px; justify-items: end;
     }
     .iconbtn{
@@ -40,17 +40,12 @@
     .swatch{
       width:28px; height:28px; border-radius:8px; border:1px solid var(--border);
       cursor:pointer; display:grid; place-items:center; font-size:.9rem; user-select:none;
-      color:#0b0f15; /* only used for font preview "A" when needed */
-      background:#fff;
-      outline: none;
+      color:#0b0f15; background:#fff; outline: none;
     }
     .swatch[data-selected="1"]{
       box-shadow: 0 0 0 2px var(--accent) inset, 0 0 0 1px var(--accent);
       border-color: var(--accent);
     }
-    .swatch.font{ background:#fff; color:#111; }
-    .swatch.font.dark { background:#0b0f15; color:#0b0f15; }
-    .swatch.font.light{ background:#ffffff; color:#ffffff; }
     .swatch.font.A::after{ content:"A"; font-weight:700; }
 
     /* Controls/Search/Tags/Card */
@@ -89,38 +84,42 @@
     .focus-only footer,
     .focus-only #related { display:none !important; }
 
-    /* keep the fixed eye + tray always visible */
-    .focus-only .ux-fixed { display: none !important; }
+    /* keep the fixed eye visible; hide only the palette in focus */
+    .focus-only .ux-fixed { display: grid !important; }
+    .focus-only #paletteTray { display: none !important; }
   </style>
 </head>
 <body>
-  <!-- Fixed Eye + Palette (always visible) -->
-  <div class="ux-fixed">
+
+  <!-- FIXED: Eye + Palette (direct child of <body>) -->
+  <div class="ux-fixed" id="uxFixed">
     <button id="focusBtn" class="iconbtn" title="Fokusmodus umschalten">👁️</button>
     <div class="tray" id="paletteTray">
       <div class="group" id="bgGroup">
         <span class="label">BG</span>
         <!-- BG swatches -->
-        <button class="swatch" data-type="bg" data-key="default"    title="Default"></button>
-        <button class="swatch" data-type="bg" data-key="pastel-pink"   title="Pastel Pink"></button>
-        <button class="swatch" data-type="bg" data-key="pastel-purple" title="Pastel Purple"></button>
-        <button class="swatch" data-type="bg" data-key="pastel-blue"   title="Pastel Blue"></button>
-        <button class="swatch" data-type="bg" data-key="pastel-mint"   title="Pastel Mint"></button>
-        <button class="swatch" data-type="bg" data-key="pastel-peach"  title="Pastel Peach"></button>
+        <button class="swatch" data-type="bg" data-key="default"        title="Default"></button>
+        <button class="swatch" data-type="bg" data-key="pastel-pink"    title="Pastel Pink"></button>
+        <button class="swatch" data-type="bg" data-key="pastel-purple"  title="Pastel Purple"></button>
+        <button class="swatch" data-type="bg" data-key="pastel-blue"    title="Pastel Blue"></button>
+        <button class="swatch" data-type="bg" data-key="pastel-mint"    title="Pastel Mint"></button>
+        <button class="swatch" data-type="bg" data-key="pastel-peach"   title="Pastel Peach"></button>
       </div>
+
       <div class="group" id="cardGroup">
         <span class="label">Box</span>
         <!-- Card swatches -->
-        <button class="swatch" data-type="card" data-key="default"    title="Default"></button>
+        <button class="swatch" data-type="card" data-key="default"       title="Default"></button>
         <button class="swatch" data-type="card" data-key="pastel-pink"   title="Pastel Pink"></button>
         <button class="swatch" data-type="card" data-key="pastel-purple" title="Pastel Purple"></button>
         <button class="swatch" data-type="card" data-key="pastel-blue"   title="Pastel Blue"></button>
         <button class="swatch" data-type="card" data-key="pastel-mint"   title="Pastel Mint"></button>
         <button class="swatch" data-type="card" data-key="pastel-peach"  title="Pastel Peach"></button>
       </div>
+
       <div class="group" id="fontGroup">
         <span class="label">Font</span>
-        <!-- Font color swatches (show an "A") -->
+        <!-- Font color swatches -->
         <button class="swatch font A" data-type="font" data-key="default" title="Default" style="background:#e8edf2;color:#e8edf2;"></button>
         <button class="swatch font A" data-type="font" data-key="dark"    title="Dark"    style="background:#0b0f15;color:#0b0f15;"></button>
         <button class="swatch font A" data-type="font" data-key="light"   title="Light"   style="background:#ffffff;color:#ffffff;"></button>
@@ -198,7 +197,7 @@
     }
     const setCSS = (k,v)=> document.documentElement.style.setProperty(k,v);
 
-    // Palettes (same keys used on swatches)
+    // Palettes
     const palettes = {
       bg: {
         "default": ()=> setCSS('--bg', '#0b0f15'),
@@ -229,9 +228,7 @@
     };
 
     function markSelected(groupType, key){
-      // clear
       document.querySelectorAll(`.swatch[data-type="${groupType}"]`).forEach(el=> el.dataset.selected = "0");
-      // set
       const el = document.querySelector(`.swatch[data-type="${groupType}"][data-key="${key}"]`);
       if (el) el.dataset.selected = "1";
     }
@@ -242,7 +239,6 @@
       const font = localStorage.getItem(PREFS.font) || 'default';
       palettes.bg[bg](); palettes.card[card](); palettes.font[font]();
       markSelected('bg', bg); markSelected('card', card); markSelected('font', font);
-      // Paint BG swatches with actual gradients/colors
       paintSwatches();
     }
 
@@ -258,7 +254,6 @@
     }
 
     function paintSwatches(){
-      // BG preview
       const bgMap = {
         "default": "#0b0f15",
         "pastel-pink": "linear-gradient(135deg, #ffd6e7, #ffe9f2, #fffafc)",
@@ -271,7 +266,6 @@
         sw.style.background = bgMap[sw.dataset.key];
       });
 
-      // Card preview
       const cardMap = {
         "default": "#131a22",
         "pastel-pink": "#ffe9f2",
@@ -283,8 +277,7 @@
       document.querySelectorAll('.swatch[data-type="card"]').forEach(sw=>{
         sw.style.background = cardMap[sw.dataset.key];
       });
-
-      // Font preview handled inline with styles (we already set backgrounds to the color).
+      /* font swatches already styled inline */
     }
 
     // Focus
@@ -297,13 +290,7 @@
       applyFocus(!cur);
     }
 
-    // --- LOAD & RENDER & FILTER (unchanged core) ---
-    function uniqSortedTags(quotes){
-      const s = new Set();
-      quotes.forEach(q => (q.tags || []).forEach(t => s.add(t)));
-      return Array.from(s).sort((a,b)=>a.localeCompare(b));
-    }
-
+    // LOAD
     async function loadQuotes(){
       const res = await fetch('quotes.json', { cache: 'no-store' });
       const data = await res.json();
@@ -319,6 +306,7 @@
       applyFocus(localStorage.getItem(PREFS.focus) === '1');
     }
 
+    // RENDER
     function render(){
       const list = getList();
       if (!list.length){
@@ -349,6 +337,7 @@
       syncTagBarActive();
     }
 
+    // FILTER
     function applyFilter(){
       const q = normalize(state.query);
       const needTags = state.activeTags;
@@ -369,6 +358,7 @@
       render();
     }
 
+    // TAGBAR
     function buildTagBar(){
       const bar = document.getElementById('tagBar');
       bar.innerHTML = "";
@@ -395,6 +385,7 @@
       });
     }
 
+    // RELATED
     function showRelated(tag, currentQuote){
       const pool = state.quotes.filter(x => (x.tags||[]).includes(tag));
       const list = pool.filter(x => x !== currentQuote);
@@ -439,6 +430,7 @@
       sec.style.display = "block";
     }
 
+    // NAV
     function next(n=1){
       const list = getList(); if (!list.length) return;
       state.idx = (state.idx + n + list.length) % list.length;
@@ -450,6 +442,7 @@
       state.idx = n; render();
     }
 
+    // EVENTS
     function attachEvents(){
       document.getElementById('nextBtn').onclick = () => next(1);
       document.getElementById('prevBtn').onclick = () => next(-1);
@@ -470,8 +463,6 @@
       };
 
       document.getElementById('focusBtn').onclick = toggleFocus;
-
-      // ESC exits focus quickly
       window.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') applyFocus(false); });
     }
 
