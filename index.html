@@ -5,22 +5,46 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Daily Quotes</title>
   <style>
+    :root{
+      --bg: #0b0f15;          /* Hintergrund */
+      --fg: #e8edf2;          /* Schrift */
+      --card: #131a22;        /* Box */
+      --border: #334155;
+      --accent: #3a7bfd;
+      --chip: #0f1620;
+    }
+
     :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-    body { margin:0; min-height:100dvh; display:grid; place-items:center; background:#0b0f15; color:#e8edf2; }
+    body { margin:0; min-height:100dvh; display:grid; place-items:center; background:var(--bg); color:var(--fg); }
     .wrap { width:clamp(320px, 90vw, 920px); }
-    .controls { display:flex; gap:10px; margin:18px 0 10px; flex-wrap:wrap; }
-    .search { flex:1; min-width:220px; padding:10px 12px; border-radius:12px; border:1px solid #334155; background:#0f1620; color:#e8edf2; }
+
+    /* TOPBAR */
+    .topbar { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:14px 0 6px; }
+    .leftbrand { opacity:.8; font-weight:600; }
+    .topright { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .iconbtn, .select {
+      border:1px solid var(--border); background:transparent; color:var(--fg);
+      border-radius:10px; padding:8px 10px; cursor:pointer; font:inherit;
+    }
+    .iconbtn:hover, .select:hover { border-color: var(--accent); }
+    .select { padding:8px 10px; }
+
+    /* Controls/Search */
+    .controls { display:flex; gap:10px; margin:12px 0 10px; flex-wrap:wrap; }
+    .search { flex:1; min-width:220px; padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:var(--chip); color:var(--fg); }
     .tagbar { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 16px; }
-    .tag { cursor:pointer; padding:6px 10px; border-radius:999px; border:1px solid #334155; background:transparent; color:#e8edf2; font-size:.9rem; }
+    .tag { cursor:pointer; padding:6px 10px; border-radius:999px; border:1px solid var(--border); background:transparent; color:var(--fg); font-size:.9rem; }
     .tag.active { border-color:#3a7bfd; box-shadow:0 0 0 2px rgba(58,123,253,.25) inset; }
-    .card { max-width:920px; padding:28px; border-radius:18px; background:#131a22; box-shadow:0 10px 30px rgba(0,0,0,.35); }
+
+    /* Card */
+    .card { max-width:920px; padding:28px; border-radius:18px; background:var(--card); box-shadow:0 10px 30px rgba(0,0,0,.35); border:1px solid var(--border); }
     .quote { font-size:1.5rem; line-height:1.45; margin:0 0 14px; }
     .author { opacity:.85; margin:0 0 8px; }
     .source { opacity:.65; font-style:italic; }
     .row { display:flex; gap:10px; margin-top:18px; flex-wrap:wrap; }
     button { cursor:pointer; border:0; padding:10px 14px; border-radius:12px; }
     .primary { background:#3a7bfd; color:#fff; }
-    .ghost { background:transparent; border:1px solid #334155; color:#e8edf2; }
+    .ghost { background:transparent; border:1px solid var(--border); color:var(--fg); }
     footer { margin-top:14px; opacity:.45; font-size:.9rem; text-align:center; }
 
     /* Related-Panel */
@@ -32,11 +56,61 @@
     .muted { opacity:.6; font-size:.9rem; }
 
     .tagline { margin-top:8px; display:flex; gap:6px; flex-wrap:wrap; }
-    .ctabtn { padding:6px 10px; border-radius:10px; border:1px dashed #334155; background:transparent; color:#e8edf2; font-size:.85rem; cursor:pointer; }
+    .ctabtn { padding:6px 10px; border-radius:10px; border:1px dashed #334155; background:transparent; color:var(--fg); font-size:.85rem; cursor:pointer; }
+
+    /* Fokus-Modus: alles außer Zitat/Autor/Quelle ausblenden */
+    .focus-only .decor,
+    .focus-only .controls,
+    .focus-only #tagBar,
+    .focus-only #currentTags,
+    .focus-only .row,
+    .focus-only footer,
+    .focus-only #related { display:none !important; }
+
+    /* Hilfsklasse, um gezielt Bereiche als „Deko“ zu markieren */
+    .decor {}
+
   </style>
 </head>
 <body>
   <div class="wrap">
+    <!-- TOP BAR -->
+    <div class="topbar decor">
+      <div class="leftbrand">Daily Quotes</div>
+      <div class="topright">
+        <!-- Farbpaletten -->
+        <select id="bgSelect" class="select" title="Background">
+          <option value="default">BG: Default Dark</option>
+          <option value="pastel-pink">BG: Pastel Pink</option>
+          <option value="pastel-purple">BG: Pastel Purple</option>
+          <option value="pastel-blue">BG: Pastel Blue</option>
+          <option value="pastel-mint">BG: Pastel Mint</option>
+          <option value="pastel-peach">BG: Pastel Peach</option>
+        </select>
+        <select id="cardSelect" class="select" title="Box">
+          <option value="default">Box: Default Dark</option>
+          <option value="pastel-pink">Box: Pastel Pink</option>
+          <option value="pastel-purple">Box: Pastel Purple</option>
+          <option value="pastel-blue">Box: Pastel Blue</option>
+          <option value="pastel-mint">Box: Pastel Mint</option>
+          <option value="pastel-peach">Box: Pastel Peach</option>
+        </select>
+        <select id="fontSelect" class="select" title="Font">
+          <option value="default">Font: Default</option>
+          <option value="dark">Font: Dark</option>
+          <option value="light">Font: Light</option>
+          <option value="pink">Font: Pink</option>
+          <option value="purple">Font: Purple</option>
+          <option value="blue">Font: Blue</option>
+          <option value="mint">Font: Mint</option>
+          <option value="peach">Font: Peach</option>
+        </select>
+
+        <!-- Fokus/Auge -->
+        <button id="focusBtn" class="iconbtn" title="Fokusmodus (alles ausblenden außer Zitat)">👁️</button>
+      </div>
+    </div>
+
     <!-- Suchfeld + Reset -->
     <div class="controls">
       <input id="searchInput" class="search" placeholder="Suche: Text, Autor, Quelle…" />
@@ -53,19 +127,19 @@
       <p class="source" id="source"></p>
 
       <!-- Tags der aktuellen Quote -->
-      <div id="currentTags" class="tagline"></div>
+      <div id="currentTags" class="tagline decor"></div>
 
-      <div class="row">
+      <div class="row decor">
         <button class="ghost" id="prevBtn">Zurück</button>
         <button class="primary" id="nextBtn">Nächste</button>
         <button class="ghost" id="shuffleBtn">Zufall</button>
         <button class="ghost" id="shareBtn">Teilen</button>
       </div>
 
-      <footer id="footer"></footer>
+      <footer id="footer" class="decor"></footer>
 
       <!-- Related-Panel -->
-      <section id="related" class="related" style="display:none">
+      <section id="related" class="related decor" style="display:none">
         <h3 id="relatedTitle">Weitere Zitate</h3>
         <div id="relatedList" class="related-list"></div>
       </section>
@@ -83,20 +157,90 @@
       query: ""
     };
 
+    // --- PREFS KEYS ---
+    const PREFS = {
+      focus: 'dq_focus_only',
+      bg: 'dq_bg_palette',
+      card: 'dq_card_palette',
+      font: 'dq_font_palette'
+    };
+
     // --- UTILS ---
     function normalize(s){ return (s || "").toLowerCase(); }
     function getList(){ return state.filtered.length ? state.filtered : state.quotes; }
-
     function dailyIndex(len) {
       const d = new Date();
       const days = Math.floor(d.getTime() / 86400000);
       return (days % len + len) % len;
     }
-
     function uniqSortedTags(quotes){
       const s = new Set();
       quotes.forEach(q => (q.tags || []).forEach(t => s.add(t)));
       return Array.from(s).sort((a,b)=>a.localeCompare(b));
+    }
+
+    // --- PALETTEN (Pastell/Default) ---
+    const palettes = {
+      bg: {
+        "default": () => setCSS('--bg', '#0b0f15'),
+        "pastel-pink": () => setCSS('--bg', 'linear-gradient(135deg, #ffd6e7 0%, #ffe9f2 60%, #fffafc 100%)'),
+        "pastel-purple": () => setCSS('--bg', 'linear-gradient(135deg, #e8d9ff 0%, #f0e6ff 60%, #fbf8ff 100%)'),
+        "pastel-blue": () => setCSS('--bg', 'linear-gradient(135deg, #d7ecff 0%, #e8f4ff 60%, #f8fbff 100%)'),
+        "pastel-mint": () => setCSS('--bg', 'linear-gradient(135deg, #dff8ef 0%, #eafaf4 60%, #f7fdfb 100%)'),
+        "pastel-peach": () => setCSS('--bg', 'linear-gradient(135deg, #ffe4d1 0%, #fff0e5 60%, #fff8f2 100%)')
+      },
+      card: {
+        "default": () => setCSS('--card', '#131a22'),
+        "pastel-pink": () => setCSS('--card', '#ffe9f2'),
+        "pastel-purple": () => setCSS('--card', '#f0e6ff'),
+        "pastel-blue": () => setCSS('--card', '#e8f4ff'),
+        "pastel-mint": () => setCSS('--card', '#eafaf4'),
+        "pastel-peach": () => setCSS('--card', '#fff0e5')
+      },
+      font: {
+        "default": () => setCSS('--fg', '#e8edf2'),
+        "dark":    () => setCSS('--fg', '#0b0f15'),
+        "light":   () => setCSS('--fg', '#ffffff'),
+        "pink":    () => setCSS('--fg', '#c026d3'),
+        "purple":  () => setCSS('--fg', '#7c3aed'),
+        "blue":    () => setCSS('--fg', '#2563eb'),
+        "mint":    () => setCSS('--fg', '#059669'),
+        "peach":   () => setCSS('--fg', '#ea580c')
+      }
+    };
+    function setCSS(varName, val){ document.documentElement.style.setProperty(varName, val); }
+
+    function applySavedPalettes(){
+      const bg = localStorage.getItem(PREFS.bg) || 'default';
+      const card = localStorage.getItem(PREFS.card) || 'default';
+      const font = localStorage.getItem(PREFS.font) || 'default';
+      palettes.bg[bg](); palettes.card[card](); palettes.font[font]();
+      // select UI vorbesetzen
+      document.getElementById('bgSelect').value = bg;
+      document.getElementById('cardSelect').value = card;
+      document.getElementById('fontSelect').value = font;
+    }
+
+    function bindPaletteSelects(){
+      document.getElementById('bgSelect').onchange = (e)=>{
+        const v = e.target.value; localStorage.setItem(PREFS.bg, v); palettes.bg[v]();
+      };
+      document.getElementById('cardSelect').onchange = (e)=>{
+        const v = e.target.value; localStorage.setItem(PREFS.card, v); palettes.card[v]();
+      };
+      document.getElementById('fontSelect').onchange = (e)=>{
+        const v = e.target.value; localStorage.setItem(PREFS.font, v); palettes.font[v]();
+      };
+    }
+
+    // --- FOKUSMODUS ---
+    function applyFocus(flag){
+      document.body.classList.toggle('focus-only', !!flag);
+      localStorage.setItem(PREFS.focus, flag ? '1' : '0');
+    }
+    function toggleFocus(){
+      const cur = document.body.classList.contains('focus-only');
+      applyFocus(!cur);
     }
 
     // --- LOAD ---
@@ -107,8 +251,13 @@
       state.allTags = uniqSortedTags(data);
       buildTagBar();
       state.idx = dailyIndex(state.quotes.length);
-      applyFilter(); // initiale Filterung (leer)
+      applyFilter(); // initial
       attachEvents();
+
+      // UI-Prefs anwenden
+      applySavedPalettes();
+      bindPaletteSelects();
+      applyFocus(localStorage.getItem(PREFS.focus) === '1');
     }
 
     // --- RENDER ---
@@ -196,9 +345,7 @@
 
     // --- RELATED LIST (gleicher Tag) ---
     function showRelated(tag, currentQuote){
-      // Liste aus *allen* Quotes mit gleichem Tag (nicht nur gefilterten)
       const pool = state.quotes.filter(x => (x.tags||[]).includes(tag));
-      // Den aktuellen entfernen
       const list = pool.filter(x => x !== currentQuote);
 
       const sec = document.getElementById('related');
@@ -222,12 +369,10 @@
           <div class="muted">${item.author ? '— ' + item.author : ''} ${item.source ? ' · ' + item.source : ''}</div>
         `;
         div.onclick = ()=>{
-          // auf dieses Zitat springen: wir suchen seinen Index in der *aktuellen* Liste (falls gefiltert)
           const listNow = getList();
           const i = listNow.indexOf(item);
           if (i >= 0) { state.idx = i; render(); }
           else {
-            // falls es in der Filterliste nicht ist, Filter leeren und dann dahin springen
             state.activeTags.clear();
             state.query = "";
             document.getElementById('searchInput').value = "";
@@ -235,7 +380,6 @@
             const j = state.quotes.indexOf(item);
             if (j >= 0) { state.idx = j; render(); }
           }
-          // Panel schließen
           document.getElementById('related').style.display = "none";
         };
         ul.appendChild(div);
@@ -290,6 +434,9 @@
         document.getElementById('searchInput').value = "";
         applyFilter();
       };
+
+      // Focus button
+      document.getElementById('focusBtn').onclick = toggleFocus;
     }
 
     // --- GO ---
