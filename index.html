@@ -18,7 +18,7 @@
     body { margin:0; min-height:100dvh; display:grid; place-items:center; background:var(--bg); color:var(--fg); }
     .wrap { width:clamp(320px, 90vw, 920px); }
 
-    /* ---- FIXED UX (Eye + Palette) ---- */
+    /* ---- FIXED UX (Eye + Style + Palette) ---- */
     .ux-fixed{
       position: fixed; top: 12px; right: 12px; z-index: 99999;
       display: grid; gap: 8px; justify-items: end;
@@ -48,9 +48,15 @@
     }
     .swatch.font.A::after{ content:"A"; font-weight:700; }
 
+    .hidden { display:none !important; }
+
     /* Controls/Search/Tags/Card */
-    .controls { display:flex; gap:10px; margin:12px 0 10px; flex-wrap:wrap; }
-    .search { flex:1; min-width:220px; padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:var(--chip); color:var(--fg); }
+    .controls { display:flex; gap:10px; margin:12px 0 10px; flex-wrap:wrap; align-items:center; }
+    .searchwrap { display:flex; gap:8px; align-items:center; flex:1; min-width:260px; }
+    .search { flex:1; min-width:160px; padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:var(--chip); color:var(--fg); }
+    .searchbtn { border:1px solid var(--border); background:transparent; color:var(--fg); padding:10px 12px; border-radius:12px; cursor:pointer; }
+    .searchbtn:hover { border-color: var(--accent); }
+
     .tagbar { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 16px; }
     .tag { cursor:pointer; padding:6px 10px; border-radius:999px; border:1px solid var(--border); background:transparent; color:var(--fg); font-size:.9rem; }
     .tag.active { border-color:#3a7bfd; box-shadow:0 0 0 2px rgba(58,123,253,.25) inset; }
@@ -84,17 +90,21 @@
     .focus-only footer,
     .focus-only #related { display:none !important; }
 
-    /* keep the fixed eye visible; hide only the palette in focus */
+    /* keep the fixed eye visible; hide style button + palette in focus */
     .focus-only .ux-fixed { display: grid !important; }
+    .focus-only #styleBtn { display: none !important; }
     .focus-only #paletteTray { display: none !important; }
   </style>
 </head>
 <body>
 
-  <!-- FIXED: Eye + Palette (direct child of <body>) -->
+  <!-- FIXED: Eye + Style + Palette (direct child of <body>) -->
   <div class="ux-fixed" id="uxFixed">
-    <button id="focusBtn" class="iconbtn" title="Fokusmodus umschalten">👁️</button>
-    <div class="tray" id="paletteTray">
+    <div style="display:flex; gap:6px;">
+      <button id="focusBtn" class="iconbtn" title="Fokusmodus umschalten">👁️</button>
+      <button id="styleBtn" class="iconbtn" title="Style-Optionen anzeigen/verstecken">Style</button>
+    </div>
+    <div class="tray hidden" id="paletteTray">
       <div class="group" id="bgGroup">
         <span class="label">BG</span>
         <!-- BG swatches -->
@@ -135,7 +145,10 @@
   <div class="wrap">
     <!-- Controls -->
     <div class="controls">
-      <input id="searchInput" class="search" placeholder="Suche: Text, Autor, Quelle…" />
+      <div class="searchwrap">
+        <input id="searchInput" class="search" placeholder="Suche: Text, Autor, Quelle…" />
+        <button id="searchBtn" class="searchbtn" title="Suchen" aria-label="Suchen">🔎</button>
+      </div>
       <button class="ghost" id="clearFilterBtn" title="Filter zurücksetzen">Filter zurücksetzen</button>
     </div>
 
@@ -179,12 +192,14 @@
       focus: 'dq_focus_only',
       bg: 'dq_bg_palette',
       card: 'dq_card_palette',
-      font: 'dq_font_palette'
+      font: 'dq_font_palette',
+      tray: 'dq_palette_open'
     };
 
     // --- UTILS ---
     const normalize = s => (s || "").toLowerCase();
     const getList = () => state.filtered.length ? state.filtered : state.quotes;
+    const setCSS = (k,v)=> document.documentElement.style.setProperty(k,v);
 
     function dailyIndex(len){
       const d = new Date(); const days = Math.floor(d.getTime() / 86400000);
@@ -195,7 +210,6 @@
       quotes.forEach(q => (q.tags || []).forEach(t => s.add(t)));
       return Array.from(s).sort((a,b)=>a.localeCompare(b));
     }
-    const setCSS = (k,v)=> document.documentElement.style.setProperty(k,v);
 
     // Palettes
     const palettes = {
@@ -233,26 +247,6 @@
       if (el) el.dataset.selected = "1";
     }
 
-    function applySavedPalettes(){
-      const bg = localStorage.getItem(PREFS.bg) || 'default';
-      const card = localStorage.getItem(PREFS.card) || 'default';
-      const font = localStorage.getItem(PREFS.font) || 'default';
-      palettes.bg[bg](); palettes.card[card](); palettes.font[font]();
-      markSelected('bg', bg); markSelected('card', card); markSelected('font', font);
-      paintSwatches();
-    }
-
-    function bindPaletteSwatches(){
-      document.querySelectorAll('.swatch').forEach(sw=>{
-        sw.addEventListener('click', ()=>{
-          const type = sw.dataset.type, key = sw.dataset.key;
-          palettes[type][key]();
-          localStorage.setItem(PREFS[type], key);
-          markSelected(type, key);
-        });
-      });
-    }
-
     function paintSwatches(){
       const bgMap = {
         "default": "#0b0f15",
@@ -280,14 +274,21 @@
       /* font swatches already styled inline */
     }
 
-    // Focus
+    // Focus + Style tray toggle
     function applyFocus(flag){
       document.body.classList.toggle('focus-only', !!flag);
       localStorage.setItem(PREFS.focus, flag ? '1' : '0');
+      if (flag) hideTray(); // ensure tray closed in focus
     }
     function toggleFocus(){
       const cur = document.body.classList.contains('focus-only');
       applyFocus(!cur);
+    }
+    function showTray(){ document.getElementById('paletteTray').classList.remove('hidden'); localStorage.setItem(PREFS.tray,'1'); }
+    function hideTray(){ document.getElementById('paletteTray').classList.add('hidden'); localStorage.setItem(PREFS.tray,'0'); }
+    function toggleTray(){
+      const tray = document.getElementById('paletteTray');
+      if (tray.classList.contains('hidden')) showTray(); else hideTray();
     }
 
     // LOAD
@@ -301,8 +302,17 @@
       applyFilter();
       attachEvents();
 
-      applySavedPalettes();
-      bindPaletteSwatches();
+      // Apply saved palettes and tray state
+      const bg = localStorage.getItem(PREFS.bg) || 'default';
+      const card = localStorage.getItem(PREFS.card) || 'default';
+      const font = localStorage.getItem(PREFS.font) || 'default';
+      palettes.bg[bg](); palettes.card[card](); palettes.font[font]();
+      markSelected('bg', bg); markSelected('card', card); markSelected('font', font);
+      paintSwatches();
+
+      const trayOpen = (localStorage.getItem(PREFS.tray) === '1');
+      if (trayOpen) showTray(); else hideTray();
+
       applyFocus(localStorage.getItem(PREFS.focus) === '1');
     }
 
@@ -455,14 +465,28 @@
         else { navigator.clipboard.writeText(text); alert('In Zwischenablage kopiert!'); }
       };
 
-      document.getElementById('searchInput').addEventListener('input', (e)=>{
-        state.query = e.target.value; applyFilter();
+      // SEARCH: click + Enter
+      const input = document.getElementById('searchInput');
+      document.getElementById('searchBtn').onclick = ()=>{
+        state.query = input.value; applyFilter();
+      };
+      input.addEventListener('keydown', (e)=>{
+        if (e.key === 'Enter'){ state.query = input.value; applyFilter(); }
       });
+      input.addEventListener('input', (e)=>{
+        state.query = e.target.value; /* live filter optional, kommentieren falls nur Button/Enter gewünscht */ 
+        applyFilter();
+      });
+
       document.getElementById('clearFilterBtn').onclick = ()=>{
         state.query = ""; state.activeTags.clear(); document.getElementById('searchInput').value = ""; applyFilter();
       };
 
+      // Focus + Style
       document.getElementById('focusBtn').onclick = toggleFocus;
+      document.getElementById('styleBtn').onclick = toggleTray;
+
+      // ESC exits focus
       window.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') applyFocus(false); });
     }
 
