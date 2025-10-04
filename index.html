@@ -12,6 +12,7 @@
       --border: #334155;
       --accent: #3a7bfd;
       --chip: #0f1620;
+      --quote-font: 20px;     /* Default Quote Font Size */
     }
 
     :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
@@ -33,6 +34,7 @@
       display:flex; gap:8px; flex-wrap:wrap; align-items:center;
       background:rgba(0,0,0,.18); border:1px solid var(--border);
       border-radius:12px; padding:8px; backdrop-filter: blur(6px);
+      max-width: min(92vw, 960px);
     }
     .group{ display:flex; gap:6px; align-items:center; }
     .label{ font-size:.8rem; opacity:.9; color:#fff; margin-right:2px; }
@@ -62,7 +64,7 @@
     .tag.active { border-color:#3a7bfd; box-shadow:0 0 0 2px rgba(58,123,253,.25) inset; }
 
     .card { max-width:920px; padding:28px; border-radius:18px; background:var(--card); box-shadow:0 10px 30px rgba(0,0,0,.35); border:1px solid var(--border); }
-    .quote { font-size:1.5rem; line-height:1.45; margin:0 0 14px; }
+    .quote { font-size: var(--quote-font); line-height:1.45; margin:0 0 14px; }
     .author { opacity:.85; margin:0 0 8px; }
     .source { opacity:.65; font-style:italic; }
     .row { display:flex; gap:10px; margin-top:18px; flex-wrap:wrap; }
@@ -94,6 +96,11 @@
     .focus-only .ux-fixed { display: grid !important; }
     .focus-only #styleBtn { display: none !important; }
     .focus-only #paletteTray { display: none !important; }
+
+    /* Font size range styles */
+    .range-wrap { display:flex; align-items:center; gap:6px; width:100%; }
+    .range-wrap input[type=range] { flex:1; accent-color: var(--accent); }
+    .range-label { font-size:.8rem; color:#fff; opacity:.9; }
   </style>
 </head>
 <body>
@@ -138,6 +145,15 @@
         <button class="swatch font A" data-type="font" data-key="blue"    title="Blue"    style="background:#2563eb;color:#2563eb;"></button>
         <button class="swatch font A" data-type="font" data-key="mint"    title="Mint"    style="background:#059669;color:#059669;"></button>
         <button class="swatch font A" data-type="font" data-key="peach"   title="Peach"   style="background:#ea580c;color:#ea580c;"></button>
+      </div>
+
+      <!-- Font Size -->
+      <div class="group" id="fontSizeGroup" style="width:100%; flex-direction:column; align-items:flex-start;">
+        <span class="label">Schriftgröße</span>
+        <div class="range-wrap">
+          <input type="range" id="fontSizeRange" min="14" max="28" value="20" step="1">
+          <span id="fontSizeValue" class="range-label">20px</span>
+        </div>
       </div>
     </div>
   </div>
@@ -193,7 +209,8 @@
       bg: 'dq_bg_palette',
       card: 'dq_card_palette',
       font: 'dq_font_palette',
-      tray: 'dq_palette_open'
+      tray: 'dq_palette_open',
+      fontSize: 'dq_font_size'
     };
 
     // --- UTILS ---
@@ -291,6 +308,22 @@
       if (tray.classList.contains('hidden')) showTray(); else hideTray();
     }
 
+    // Font size
+    function applyFontSize(px){
+      const val = parseInt(px);
+      document.documentElement.style.setProperty('--quote-font', val + 'px');
+      const label = document.getElementById('fontSizeValue');
+      if (label) label.textContent = val + 'px';
+      localStorage.setItem(PREFS.fontSize, val);
+    }
+    function initFontSize(){
+      const saved = parseInt(localStorage.getItem(PREFS.fontSize) || '20');
+      const range = document.getElementById('fontSizeRange');
+      range.value = saved;
+      applyFontSize(saved);
+      range.oninput = e => applyFontSize(e.target.value);
+    }
+
     // LOAD
     async function loadQuotes(){
       const res = await fetch('quotes.json', { cache: 'no-store' });
@@ -314,6 +347,7 @@
       if (trayOpen) showTray(); else hideTray();
 
       applyFocus(localStorage.getItem(PREFS.focus) === '1');
+      initFontSize();
     }
 
     // RENDER
@@ -465,7 +499,7 @@
         else { navigator.clipboard.writeText(text); alert('In Zwischenablage kopiert!'); }
       };
 
-      // SEARCH: click + Enter
+      // SEARCH: click + Enter + live
       const input = document.getElementById('searchInput');
       document.getElementById('searchBtn').onclick = ()=>{
         state.query = input.value; applyFilter();
@@ -474,8 +508,7 @@
         if (e.key === 'Enter'){ state.query = input.value; applyFilter(); }
       });
       input.addEventListener('input', (e)=>{
-        state.query = e.target.value; /* live filter optional, kommentieren falls nur Button/Enter gewünscht */ 
-        applyFilter();
+        state.query = e.target.value; applyFilter();
       });
 
       document.getElementById('clearFilterBtn').onclick = ()=>{
@@ -486,12 +519,30 @@
       document.getElementById('focusBtn').onclick = toggleFocus;
       document.getElementById('styleBtn').onclick = toggleTray;
 
+      // Palette swatches
+      document.querySelectorAll('.swatch').forEach(sw=>{
+        sw.addEventListener('click', ()=>{
+          const type = sw.dataset.type, key = sw.dataset.key;
+          const PREF_KEY = {bg:'bg',card:'card',font:'font'}[type];
+          if (PREF_KEY){
+            const map = {bg:'bg',card:'card',font:'font'};
+            if (palettes[type][key]) palettes[type][key]();
+            localStorage.setItem(PREFS[map[type]], key);
+            markSelected(type, key);
+          }
+        });
+      });
+
       // ESC exits focus
       window.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') applyFocus(false); });
     }
 
+    // INIT SWATCH PAINT
+    function paintOnReady(){ paintSwatches(); }
+
     // GO
     loadQuotes();
+    paintOnReady();
   </script>
 </body>
 </html>
